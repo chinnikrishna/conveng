@@ -4,14 +4,18 @@
 
 module mem_gen #(ADDRW=10,
 				 DATAW=8)
-	(/*AUTOARG*/);
+	(/*AUTOARG*/
+	// Outputs
+	rd_data,
+	// Inputs
+	clk, rd_addr, wr_addr, wr_en, wr_data
+	);
 
 	// Globals
 	input clk;
 	
 	// Read Port
 	input [ADDRW-1:0] rd_addr;
-	input 			  rd_en;
 	output [DATAW-1:0] rd_data;
 	
 	
