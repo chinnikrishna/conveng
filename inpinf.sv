@@ -21,17 +21,20 @@ module inpinf #(parameter XB = 10,
 	input [XB-1:0] cfg_width;
 	input [YB-1:0] cfg_height;
 	
-    // Interface data and control
+    // From Interface 
 	input [PB-1:0] px_in_data;
 	input 		   px_in_valid;
-	
-	input 		   inf_rd;	    // Read from fifo
+
+	// To Interface
 	output 		   px_in_ready; // Ready to accept data
+	
+	// From Memory unit
+	input 		   inf_rd;	    // Read from fifo
 
-
+	// To Memory unit
 	output [XB-1:0] col_count;	
 	output [YB-1:0] row_count;
-	output 			inc_mem_ptr;	
+	output 			inc_mem_ptr;
 	output [PB-1:0] inf_data; // Data from fifo
 	
 

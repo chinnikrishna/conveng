@@ -16,7 +16,7 @@ module mem_gen #(ADDRW=10,
 	
 	// Read Port
 	input [ADDRW-1:0] rd_addr;
-	output [DATAW-1:0] rd_data;
+	output reg [DATAW-1:0] rd_data;
 	
 	
 	// Write Port
@@ -28,13 +28,14 @@ module mem_gen #(ADDRW=10,
 	reg [DATAW-1:0]   ram [(2**ADDRW)-1:0];
 
 	
-	always @(posedge clk)
+	always_ff @(posedge clk)
 	  begin
 		  if(wr_en)
 			ram[wr_addr] <= wr_data;
 	  end
 
-	assign rd_data = ram[rd_addr];
+	always_ff @(posedge clk)
+	  rd_data <= ram[rd_addr];
 	
 	
 endmodule // mem_gen

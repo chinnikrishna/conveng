@@ -4,7 +4,8 @@
 module top #(
 			 parameter XB = 10,
 			 parameter YB = 10,
-			 parameter PB = 8)
+			 parameter PB = 8,
+			 parameter NM = 4)
 	(/*AUTOARG*/
 	// Outputs
 	px_in_ready, px_out_data, px_out_last_x, px_out_last_y,
@@ -65,14 +66,65 @@ module top #(
 				  .inf_rd				(inf_rd));
 	
 	// Memory Unit
-	reg [3:0] 		mem_used;
-	wire [3:0] 		mem_bank_full;
-	wire [3:0] 		mem_bank_minfill;
-	wire [PB-1:0] 	pix_data [3:0];
-	reg [XB-1:0] 	mb_rd_addr [3:0];
+	wire [NM-1:0] 		mem_used;
+	wire [NM-1:0] 		mb_full;
+	wire [NM-1:0] 		mb_minfill;
+	wire [PB-1:0] 		mem_data [NM-1:0];
+	wire [XB-1:0] 		mb_rd_addr [NM-1:0];
 	
-				  
-	initial
+			  	  							
+	mem_unit memunit(/*AUTOINST*/
+					 // Outputs
+					 .inf_rd			(inf_rd),
+					 .mb_full			(mb_full[NM-1:0]),
+					 .mb_minfill		(mb_minfill[NM-1:0]),
+					 .mem_data			(mem_data/*[PB-1:0]*/),
+					 // Inputs
+					 .clk				(clk),
+					 .rst				(rst),
+					 .cfg_width			(cfg_width[XB-1:0]),
+					 .cfg_height		(cfg_height[YB-1:0]),
+					 .col_count			(col_count[XB-1:0]),
+					 .row_count			(row_count[YB-1:0]),
+					 .inf_data			(inf_data[PB-1:0]),
+					 .inc_mem_ptr		(inc_mem_ptr),
+					 .mem_used			(mem_used[NM-1:0]),
+					 .mb_rd_addr		(mb_rd_addr/*[XB-1:0]*/));
+	
+
+	// Control Unit
+	wire [PB-1:0] 		pu_data [NM-1:0];
+	wire [PB-1:0] 		col_data [NM-1:0];	
+	assign pu_data = mem_data;
+	
+	cntl_unit cntlr(/*AUTOINST*/
+					// Outputs
+					.mem_used			(mem_used[NM-1:0]),
+					.mb_rd_addr			(mb_rd_addr/*[XB-1:0]*/),
+					.col_data			(col_data/*[PB-1:0]*/),
+					// Inputs
+					.clk				(clk),
+					.rst				(rst),
+					.cfg_width			(cfg_width[XB-1:0]),
+					.cfg_height			(cfg_height[YB-1:0]),
+					.mb_full			(mb_full[NM-1:0]),
+					.mb_minfill			(mb_minfill[NM-1:0]),
+					.pu_data			(pu_data/*[PB-1:0]*/));
+	
+	wire [PB*2-1:0] 	pix_out;
+	wire 				proc_done;
+
+	pixel_unit pixunit(/*AUTOINST*/
+					   // Outputs
+					   .pix_out			(pix_out[PB*2-1:0]),
+					   .proc_done		(proc_done),
+					   // Inputs
+					   .clk				(clk),
+					   .rst				(rst),
+					   .col_data		(col_data/*[PB-1:0]*/));
+	
+
+/*	initial
 	  begin
 		  #0 mem_used = '0;		  
 		  #1200 mem_used[0] = 1'b1;
@@ -80,30 +132,7 @@ module top #(
 		  #50 mb_rd_addr[0] = 1;mb_rd_addr[1] = 1;mb_rd_addr[2] = 1;mb_rd_addr[3] = 1;
 		  
 	  end
-	
-		  
-						
-
-	
-	mem_unit memunit(/*AUTOINST*/
-					 // Outputs
-					 .inf_rd			(inf_rd),
-					 .mem_bank_full		(mem_bank_full[3:0]),
-					 .mem_bank_minfill	(mem_bank_minfill[3:0]),
-					 .pix_data			(pix_data/*[PB-1:0]*/),
-					 // Inputs
-					 .clk				(clk),
-					 .rst				(rst),
-					 .col_count			(col_count[XB-1:0]),
-					 .row_count			(row_count[YB-1:0]),
-					 .cfg_width			(cfg_width[XB-1:0]),
-					 .cfg_height		(cfg_height[YB-1:0]),
-					 .inf_data			(inf_data[PB-1:0]),
-					 .inc_mem_ptr		(inc_mem_ptr),
-					 .mem_used			(mem_used[3:0]),
-					 .mb_rd_addr		(mb_rd_addr/*[XB-1:0]*/));
-	
-	
+*/	
 			   
 	
 endmodule // top
