@@ -94,7 +94,9 @@ module top #(
 
 	// Control Unit
 	wire [PB-1:0] 		pu_data [NM-1:0];
-	wire [PB-1:0] 		col_data [NM-1:0];	
+	wire [PB-1:0] 		col_data [NM-1:0];
+	wire 				en;
+	
 	assign pu_data = mem_data;
 	
 	cntl_unit cntlr(/*AUTOINST*/
@@ -102,6 +104,7 @@ module top #(
 					.mem_used			(mem_used[NM-1:0]),
 					.mb_rd_addr			(mb_rd_addr/*[XB-1:0]*/),
 					.col_data			(col_data/*[PB-1:0]*/),
+					.en					(en),
 					// Inputs
 					.clk				(clk),
 					.rst				(rst),
@@ -118,12 +121,20 @@ module top #(
 					   // Outputs
 					   .pix_out			(pix_out[PB*2-1:0]),
 					   .proc_done		(proc_done),
+					   .valid			(valid),
 					   // Inputs
 					   .clk				(clk),
 					   .rst				(rst),
+					   .en				(en),
 					   .col_data		(col_data/*[PB-1:0]*/));
 	
 
+
+	assign px_out_data = pix_out[7:0];
+	assign px_out_valid = valid;
+	assign px_out_last_x = '0;
+	assign px_out_last_y = '0;
+	
 /*	initial
 	  begin
 		  #0 mem_used = '0;		  

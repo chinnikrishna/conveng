@@ -9,12 +9,14 @@ module sipo # (parameter N  = 3,
 	// Outputs
 	par_out, sipo_valid,
 	// Inputs
-	clk, rst, ser_in
+	clk, rst, en, ser_in
 	);
 	localparam SHFT_SIZE = 2*PB*N;
 	//Globals
 	input clk;
 	input rst;
+	input en;
+	
 
 	input [PB*2-1:0] ser_in;
 
@@ -25,16 +27,16 @@ module sipo # (parameter N  = 3,
 	
 	always_ff @(posedge clk)
 	  begin
-		  if(rst)
+		  if(rst || ~en) //TODO: Need to clean this
 			begin
 				pix_cnt = '0;
 				par_out = '0;
 			end
 		  else
 			begin
-				if(pix_cnt != (N-1))
+				if((pix_cnt != (N-1)) && en)
 				   pix_cnt = pix_cnt+1'b1;
-				par_out = {ser_in, par_out[SHFT_SIZE-(2*PB)-1:0]};
+				par_out = {ser_in, par_out[47:16]}; //TODO: parameterize this
 			end
 	  end
 	assign sipo_valid = (pix_cnt==N-1)?1'b1:1'b0;
