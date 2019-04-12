@@ -8,7 +8,7 @@ module pixel_unit # (parameter XB = 10,
 					 parameter NM = 4)
 	(/*AUTOARG*/
 	// Outputs
-	pix_out, proc_done, valid,
+	pix_out, proc_done, pix_valid,
 	// Inputs
 	clk, rst, en, col_data
 	);
@@ -25,15 +25,15 @@ module pixel_unit # (parameter XB = 10,
 	input [PB-1:0] col_data [NM-1:0];
 	
 	// To output interface
-	output [PB*2-1:0] pix_out;
-	output 			  proc_done;
-	output 			  valid;
+	output [PB-1:0] pix_out;
+	output 			proc_done;
+	output 			pix_valid;
 	
 	
 	//Column processor
-	wire [PB*2-1:0]		col_res;
-	wire 				cp_en;	
-	wire 				cp_valid;
+	wire [PB*2-1:0] col_res;
+	wire 			cp_en;	
+	wire 			cp_valid;
 	
 	col_proc cp (/*AUTOINST*/
 				 // Outputs
@@ -46,13 +46,13 @@ module pixel_unit # (parameter XB = 10,
 				 .col_data				(col_data/*[PB-1:0]*/));
 	
 	//Row Processor
-	wire [PB*2-1:0] 	pix_out;
-	wire 				rp_en;
-	wire 				rp_valid;
+	wire [PB-1:0] 	pix_out;
+	wire 			rp_en;
+	wire 			rp_valid;
 	
 	row_proc rp(/*AUTOINST*/
 				// Outputs
-				.pix_out				(pix_out[PB*2-1:0]),
+				.pix_out				(pix_out[PB-1:0]),
 				.rp_valid				(rp_valid),
 				// Inputs
 				.clk					(clk),
@@ -62,7 +62,7 @@ module pixel_unit # (parameter XB = 10,
 
 	assign cp_en = en;
 	assign rp_en = cp_valid;
-	assign valid = rp_valid;	
+	assign pix_valid = rp_valid;	
 	
 endmodule // pixel_unit
 
@@ -96,7 +96,7 @@ module col_proc # (parameter PB  = 8,
 	reg 			  en1F, en2F;
 	`SYNC_RST_MSFF(en1F, cp_en, clk, rst)
 	`SYNC_RST_MSFF(en2F, en1F, clk, rst)
-	assign cp_valid = en2F;
+	assign cp_valid = en2F & cp_en;
 	
 	// TODO: Parametrize this
 	assign r1_shift = col_data[0] << R1S;
@@ -114,9 +114,10 @@ module col_proc # (parameter PB  = 8,
 endmodule // col_proc
 
 module row_proc # (parameter PB  = 8,
-				   parameter C1S = 0,
-				   parameter C2S = 1,
-				   parameter C3S = 0)
+				   parameter C1S = 0, // Column1 shift
+				   parameter C2S = 1, // Column2 shift
+				   parameter C3S = 0, // Column3 shift
+				   parameter DIV = 4) // Divider shift
 	(/*AUTOARG*/
 	// Outputs
 	pix_out, rp_valid,
@@ -131,42 +132,47 @@ module row_proc # (parameter PB  = 8,
 	input rp_en;	
 	input [PB*2-1:0] col_res;
 
-	output reg [PB*2-1:0] pix_out;
-	output 				  rp_valid;
+	output reg [PB-1:0] pix_out;
+	output 				rp_valid;
 	
 
+	// Serial-in Parallel-Out shift register. 16x3 width
+	reg [(PB*2*3)-1:0] 	par_out;
+	`EN_SYNC_RST_MSFF(par_out, {col_res, par_out[(PB*6)-1:(PB*2)]}, clk, rp_en, rst)
 
-	wire [47:0] 	 par_out; //TODO: Parameterize 47
-	wire 			 sipo_valid;	
+	// Delay rp_en by 3 cycles to account for shift register
+	reg [2:0] 				 rp_enF;
+	`SYNC_RST_MSFF(rp_enF[0], rp_en, clk, rst)
+	`SYNC_RST_MSFF(rp_enF[1], rp_enF[0], clk, rst)
+	`SYNC_RST_MSFF(rp_enF[2], rp_enF[1], clk, rst)
 
-	sipo sipo(.par_out(par_out),.sipo_valid(sipo_valid),
-			  .clk(clk),.rst(rst),.ser_in(col_res),.en(rp_en));
-
-	wire [PB*2-1:0]  c1_shift, c2_shift, c3_shift;
-	wire [PB*2-1:0]  c1, c2, c3;
-	assign c1 = par_out[15:0];
-	assign c2 = par_out[31:16];
-	assign c3 = par_out[47:32];
-	
-	assign c1_shift = c1 << C1S;
-	assign c2_shift = c2 << C2S;
-	assign c3_shift = c3 << C3S;
+	// Shift to do kernel multiplication
+	wire [PB*2-1:0]  c1_shift, c2_shift, c3_shift;	
+	assign c1_shift = par_out[(PB*2)-1:0] << C1S;
+	assign c2_shift = par_out[(PB*4)-1:PB*2] << C2S;
+	assign c3_shift = par_out[(PB*6)-1:PB*4] << C3S;
 
 	reg  [PB*2-1:0]	  c1_shift_1F, c2_shift_1F, c3_shift_1F;
-	`EN_ASYNC_RST_MSFF(c1_shift_1F, c1_shift, clk, sipo_valid, rst)
-	`EN_ASYNC_RST_MSFF(c2_shift_1F, c2_shift, clk, sipo_valid, rst)
-	`EN_ASYNC_RST_MSFF(c3_shift_1F, c3_shift, clk, sipo_valid, rst)
+	`EN_ASYNC_RST_MSFF(c1_shift_1F, c1_shift, clk, rp_enF[2], rst)
+	`EN_ASYNC_RST_MSFF(c2_shift_1F, c2_shift, clk, rp_enF[2], rst)
+	`EN_ASYNC_RST_MSFF(c3_shift_1F, c3_shift, clk, rp_enF[2], rst)
 
 	wire [PB*2-1:0]   row_sum;
-	assign row_sum = c1_shift_1F + c2_shift_1F + c3_shift_1F;
+	reg [PB*2-1:0] 	  sum_unshftd;
+	
+	assign row_sum = c1_shift_1F + c2_shift_1F + c3_shift_1F + 4'd8;
+	`SYNC_RST_MSFF(sum_unshftd, row_sum, clk, rst)
 
-	`SYNC_RST_MSFF(pix_out, row_sum, clk, rst)
+	wire [PB*2-1:0]   sum_shftd;
+	assign sum_shftd = sum_unshftd >> DIV;	
+	`SYNC_RST_MSFF(pix_out, sum_shftd[PB-1:0], clk, rst)
 
-	//Flopping 3 times to account for SIPO delay 
-	reg 			  en1F, en2F, en3F;
-	`SYNC_RST_MSFF(en1F, sipo_valid, clk, rst)
+	//Flopping 3 times to account for pipeline delay 
+	reg 			  en1F, en2F, en3F, en4F;
+	`SYNC_RST_MSFF(en1F, rp_enF[2], clk, rst)
 	`SYNC_RST_MSFF(en2F, en1F, clk, rst)
 	`SYNC_RST_MSFF(en3F, en2F, clk, rst)
+
 	assign rp_valid = en3F;
 
 

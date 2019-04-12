@@ -84,7 +84,7 @@ module inpinf #(parameter XB = 10,
 	wire 		   rst_col_count;
 	
 	assign inc_col_count = inq_rd; //TODO: Check corner cases
-	assign rst_col_count = (col_count == (cfg_width - 1'd1)) || rst;
+	assign rst_col_count = (col_count == cfg_width) || rst;
 	`EN_SYNC_RST_MSFF(col_count, col_count+1'b1, clk, inc_col_count, rst_col_count)
 
 	//Row Count - Counts number of rows
@@ -95,7 +95,7 @@ module inpinf #(parameter XB = 10,
 
 	assign inc_mem_ptr = rst_col_count;	
 	assign inc_row_count = rst_col_count; // TODO: Check corner cases
-	assign rst_row_count = (row_count == (cfg_height - 1'd1)) || rst;
+	assign rst_row_count = (row_count == cfg_height) || rst;
 	`EN_SYNC_RST_MSFF(row_count, row_count+1'b1, clk, inc_row_count, rst_row_count)
 
 

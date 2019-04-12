@@ -96,6 +96,7 @@ module top #(
 	wire [PB-1:0] 		pu_data [NM-1:0];
 	wire [PB-1:0] 		col_data [NM-1:0];
 	wire 				en;
+	wire 				out_inf_busy;
 	
 	assign pu_data = mem_data;
 	
@@ -112,39 +113,47 @@ module top #(
 					.cfg_height			(cfg_height[YB-1:0]),
 					.mb_full			(mb_full[NM-1:0]),
 					.mb_minfill			(mb_minfill[NM-1:0]),
-					.pu_data			(pu_data/*[PB-1:0]*/));
+					.pu_data			(pu_data/*[PB-1:0]*/),
+					.out_inf_busy		(out_inf_busy));
 	
-	wire [PB*2-1:0] 	pix_out;
+	wire [PB-1:0] 		pix_out;
 	wire 				proc_done;
-
+	wire 				pix_valid;
+	
 	pixel_unit pixunit(/*AUTOINST*/
 					   // Outputs
-					   .pix_out			(pix_out[PB*2-1:0]),
+					   .pix_out			(pix_out[PB-1:0]),
 					   .proc_done		(proc_done),
-					   .valid			(valid),
+					   .pix_valid		(pix_valid),
 					   // Inputs
 					   .clk				(clk),
 					   .rst				(rst),
 					   .en				(en),
 					   .col_data		(col_data/*[PB-1:0]*/));
+
+	wire [PB-1:0] 		pix_data;
+	
+	assign pix_data = pix_out;
+	assign pix_en = pix_valid;	
+	
+	outinf outinf(/*AUTOINST*/
+				  // Outputs
+				  .px_out_data			(px_out_data[PB-1:0]),
+				  .px_out_valid			(px_out_valid),
+				  .px_out_last_x		(px_out_last_x),
+				  .px_out_last_y		(px_out_last_y),
+				  .done					(done),
+				  .out_inf_busy			(out_inf_busy),
+				  // Inputs
+				  .clk					(clk),
+				  .rst					(rst),
+				  .cfg_width			(cfg_width[XB-1:0]),
+				  .cfg_height			(cfg_height[YB-1:0]),
+				  .pix_data				(pix_data[PB-1:0]),
+				  .pix_en				(pix_en),
+				  .px_out_ready			(px_out_ready));
 	
 
-
-	assign px_out_data = pix_out[7:0];
-	assign px_out_valid = valid;
-	assign px_out_last_x = '0;
-	assign px_out_last_y = '0;
-	
-/*	initial
-	  begin
-		  #0 mem_used = '0;		  
-		  #1200 mem_used[0] = 1'b1;
-		  #10 mem_used[0] = 1'b0;
-		  #50 mb_rd_addr[0] = 1;mb_rd_addr[1] = 1;mb_rd_addr[2] = 1;mb_rd_addr[3] = 1;
-		  
-	  end
-*/	
-			   
 	
 endmodule // top
 `endif //  `ifndef TOP

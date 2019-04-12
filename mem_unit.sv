@@ -82,7 +82,7 @@ module mem_unit #(parameter XB = 10,
 		  begin
 			  //Mem bank is full if col_count = cfg_width
 			  assign mb_full[mem_i] = (mem_count == mem_i) &&
-											(col_count == (cfg_width-1'd1));
+											(col_count == cfg_width);
 			  //Toggle busy when it is full and after it is used. default is zero.
 			  assign tog_mb_busy[mem_i] = mb_full[mem_i] || mem_used[mem_i];
 
